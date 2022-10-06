@@ -7,10 +7,17 @@ and this project tries to adhere to [Semantic Versioning](http://semver.org/spec
 ## [Unreleased]
 _this space intentionally left blank_
 
+## [0.5.0] - 2022-09-30
+
+### In Code
+
+- BREAKING CHANGE: Add support for setting per-role config with ALTER ROLE SET (@johanfleury)
+pgbedrock will now remove any existing config that’s not defined in its configuration.
+
 ## [0.4.4] - 2022-09-06
 
 ### In Code
-- Remove Python 2 support
+- Remove Python 2 support (@johanfleury)
 - Add support for SCRAM-SHA-256 passwords (passwords can now be passed plain text or hashed) (@johanfleury)
 
 ## [0.4.3] - 2022-09-01
