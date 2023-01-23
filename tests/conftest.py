@@ -18,6 +18,8 @@ from pgbedrock import LOG_FORMAT
 logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 logger = logging.getLogger(__name__)
 
+from pgbedrock import context
+
 
 Q_GET_ROLE_ATTRIBUTE = "SELECT {} FROM pg_authid WHERE rolname='{}';"
 NEW_USER = 'foobar'
@@ -163,6 +165,9 @@ def mockdbcontext():
                 return None
 
             return empty_func
+
+        def get_version_info(self):
+            return context.VersionInfo(postgres_version=None, redshift_version=None, is_redshift=None, is_google_cloud=False)
 
     return MockDatabaseContext()
 

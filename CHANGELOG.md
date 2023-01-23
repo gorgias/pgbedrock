@@ -7,6 +7,12 @@ and this project tries to adhere to [Semantic Versioning](http://semver.org/spec
 ## [Unreleased]
 _this space intentionally left blank_
 
+## [0.6.0] - 2023-01-23
+
+### In Code
+
+- Add initial support for Google Cloud SQL (@johanfleury)
+
 ## [0.5.0] - 2022-09-30
 
 ### In Code
