@@ -24,7 +24,7 @@ Q_GET_ALL_CURRENT_DEFAULTS = """
             (aclexplode(def.defaclacl)).privilege_type
         FROM
             pg_default_acl def
-            JOIN pg_authid auth
+            JOIN {roles_table} auth
                     ON def.defaclrole = auth.oid
             JOIN pg_namespace nsp
                     ON def.defaclnamespace = nsp.oid
@@ -41,7 +41,7 @@ Q_GET_ALL_CURRENT_DEFAULTS = """
         subq.privilege_type
     FROM
         subq
-        JOIN pg_authid t_grantee
+        JOIN {roles_table} t_grantee
             ON subq.grantee_oid = t_grantee.oid
     WHERE
         subq.grantor_oid != subq.grantee_oid
@@ -66,7 +66,7 @@ Q_GET_ALL_CURRENT_NONDEFAULTS = """
             (aclexplode(c.relacl)).privilege_type
         FROM
             pg_class c
-            JOIN pg_authid t_owner
+            JOIN {roles_table} t_owner
                 ON c.relowner = t_owner.OID
             JOIN pg_namespace nsp
                 ON c.relnamespace = nsp.oid
@@ -84,7 +84,7 @@ Q_GET_ALL_CURRENT_NONDEFAULTS = """
              t_owner.rolname AS owner,
              (aclexplode(nsp.nspacl)).privilege_type
         FROM pg_namespace nsp
-        JOIN pg_authid t_owner
+        JOIN {roles_table} t_owner
             ON nsp.nspowner = t_owner.OID
     ), combined AS (
         SELECT *
@@ -101,7 +101,7 @@ Q_GET_ALL_CURRENT_NONDEFAULTS = """
         combined.privilege_type
     FROM
         combined
-        JOIN pg_authid t_grantee
+        JOIN {roles_table} t_grantee
             ON combined.grantee_oid = t_grantee.oid
         WHERE combined.owner != t_grantee.rolname
     ;
@@ -120,7 +120,7 @@ Q_GET_ALL_ROLE_ATTRIBUTES = """
         rolreplication,
         rolsuper,
         rolvaliduntil
-    FROM pg_authid
+    FROM {roles_table}
     WHERE rolname != 'pg_signal_backend'
     ;
     """
@@ -133,9 +133,9 @@ Q_GET_ALL_MEMBERSHIPS = """
         auth_group.rolname AS group
     FROM
         pg_auth_members link_table
-        JOIN pg_authid auth_member
+        JOIN {roles_table} auth_member
             ON link_table.member = auth_member.oid
-        JOIN pg_authid auth_group
+        JOIN {roles_table} auth_group
             ON link_table.roleid = auth_group.oid
     ;
     """
@@ -195,7 +195,7 @@ Q_GET_ALL_RAW_OBJECT_ATTRIBUTES = """
         t_owner.rolname AS owner,
         co.is_dependent
     FROM combined AS co
-    JOIN pg_authid t_owner
+    JOIN {roles_table} t_owner
         ON co.owner_id = t_owner.OID
     WHERE
         co.schema NOT LIKE 'pg\_t%'
@@ -205,7 +205,7 @@ Q_GET_ALL_RAW_OBJECT_ATTRIBUTES = """
 Q_GET_ALL_PERSONAL_SCHEMAS = """
     SELECT nsp.nspname
     FROM pg_namespace nsp
-        JOIN pg_authid auth
+        JOIN {roles_table} auth
             ON  nsp.nspname = auth.rolname
     WHERE auth.rolcanlogin IS TRUE
     ;
@@ -215,7 +215,8 @@ Q_GET_VERSIONS = """
     SELECT
         substring(version from 'PostgreSQL ([0-9.]*) ') AS postgres_version,
         substring(version from 'Redshift ([0-9.]*)') AS redshift_version,
-        version LIKE '%Redshift%' AS is_redshift
+        version LIKE '%Redshift%' AS is_redshift,
+        exists(SELECT * FROM pg_roles WHERE rolname = 'cloudsqladmin') AS is_google_cloud
     FROM version()
     ;
 """
@@ -240,7 +241,7 @@ PRIVILEGE_MAP = {
 ObjectInfo = namedtuple('ObjectInfo', ['kind', 'objname', 'owner', 'is_dependent'])
 ObjectAttributes = namedtuple('ObjectAttributes',
                               ['kind', 'schema', 'objname', 'owner', 'is_dependent'])
-VersionInfo = namedtuple('VersionInfo', ['postgres_version', 'redshift_version', 'is_redshift'])
+VersionInfo = namedtuple('VersionInfo', ['postgres_version', 'redshift_version', 'is_redshift', 'is_google_cloud'])
 
 
 class DatabaseContext(object):
@@ -265,6 +266,9 @@ class DatabaseContext(object):
         self.cursor = cursor
         self.verbose = verbose
         self._cache = dict()
+
+        version_info = self.get_version_info()
+        self.roles_table = 'pg_roles' if version_info.is_google_cloud else 'pg_authid'
 
     def __getattribute__(self, attr):
         """ If the requested attribute should be cached and hasn't, fetch it and cache it. """
@@ -308,7 +312,7 @@ class DatabaseContext(object):
         """
         NamedRow = namedtuple('NamedRow',
                               ['grantee', 'objkind', 'grantor', 'schema', 'privilege'])
-        common.run_query(self.cursor, self.verbose, Q_GET_ALL_CURRENT_DEFAULTS)
+        common.run_query(self.cursor, self.verbose, Q_GET_ALL_CURRENT_DEFAULTS.format(roles_table=self.roles_table))
 
         current_defaults = defaultdict(dict)
         for i in self.cursor.fetchall():
@@ -382,7 +386,7 @@ class DatabaseContext(object):
         """
         NamedRow = namedtuple('NamedRow',
                               ['grantee', 'objkind', 'schema', 'unqualified_name', 'privilege'])
-        common.run_query(self.cursor, self.verbose, Q_GET_ALL_CURRENT_NONDEFAULTS)
+        common.run_query(self.cursor, self.verbose, Q_GET_ALL_CURRENT_NONDEFAULTS.format(roles_table=self.roles_table))
         current_nondefaults = defaultdict(dict)
 
         for i in self.cursor.fetchall():
@@ -419,8 +423,8 @@ class DatabaseContext(object):
             return set()
 
     def get_all_role_attributes(self):
-        """ Return a dict with key = rolname and values = all fields in pg_authid """
-        common.run_query(self.cursor, self.verbose, Q_GET_ALL_ROLE_ATTRIBUTES)
+        """ Return a dict with key = rolname and values = all fields in the roles table """
+        common.run_query(self.cursor, self.verbose, Q_GET_ALL_ROLE_ATTRIBUTES.format(roles_table=self.roles_table))
         role_attributes = {row['rolname']: dict(row) for row in self.cursor.fetchall()}
         return role_attributes
 
@@ -456,7 +460,7 @@ class DatabaseContext(object):
         The results are used in several subsequent methods, so having consistent results is
         important. Thus, this helper method is here to ensure that we only run this query once.
         """
-        common.run_query(self.cursor, self.verbose, Q_GET_ALL_RAW_OBJECT_ATTRIBUTES)
+        common.run_query(self.cursor, self.verbose, Q_GET_ALL_RAW_OBJECT_ATTRIBUTES.format(roles_table=self.roles_table))
         results = []
         NamedRow = namedtuple('NamedRow', ['kind', 'schema', 'unqualified_name', 'owner', 'is_dependent'])
         for i in self.cursor.fetchall():
@@ -503,7 +507,7 @@ class DatabaseContext(object):
 
     def get_all_memberships(self):
         """ Return a list of tuple, where each tuple is (member, group) """
-        common.run_query(self.cursor, self.verbose, Q_GET_ALL_MEMBERSHIPS)
+        common.run_query(self.cursor, self.verbose, Q_GET_ALL_MEMBERSHIPS.format(roles_table=self.roles_table))
         return self.cursor.fetchall()
 
     def get_all_schemas_and_owners(self):
@@ -541,7 +545,7 @@ class DatabaseContext(object):
         Returns:
             set: A set of common.ObjectName instances
         """
-        common.run_query(self.cursor, self.verbose, Q_GET_ALL_PERSONAL_SCHEMAS)
+        common.run_query(self.cursor, self.verbose, Q_GET_ALL_PERSONAL_SCHEMAS.format(roles_table=self.roles_table))
         personal_schemas = set([common.ObjectName(schema=row[0]) for row in self.cursor.fetchall()])
         return personal_schemas
 

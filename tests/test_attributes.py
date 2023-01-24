@@ -482,7 +482,7 @@ def test_set_all_configs(mockdbcontext):
 @pytest.mark.parametrize('value, expected', [
         # No units
         (None, None),
-        ("foo", "foo")
+        ("foo", "foo"),
         ('1', 1),
         ('1.1', 1.1),
         # Memory units

@@ -65,8 +65,8 @@ def test_get_all_current_defaults(cursor):
     ('role1', 'missing_object_kind1', 'access1', set()),
     ('missing_role1', 'object_kind1', 'access', set()),
 ])
-def test_get_role_current_defaults(rolename, object_kind, access, expected):
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=True)
+def test_get_role_current_defaults(cursor, rolename, object_kind, access, expected):
+    dbcontext = context.DatabaseContext(cursor, verbose=True)
     dbcontext._cache['get_all_current_defaults'] = lambda: {
         'role1': {
             'object_kind1': {
@@ -88,8 +88,8 @@ def test_get_role_current_defaults(rolename, object_kind, access, expected):
     # No entries exist --> False
     ('role1', common.ObjectName(DUMMY), 'objkind_does_not_exist', DUMMY, False),
 ])
-def test_has_default_privilege(rolename, schema, object_kind, access, expected):
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=True)
+def test_has_default_privilege(cursor, rolename, schema, object_kind, access, expected):
+    dbcontext = context.DatabaseContext(cursor, verbose=True)
     dbcontext._cache['get_all_current_defaults'] = lambda: {
         'role1': {
             'tables': {
@@ -182,8 +182,8 @@ def test_get_all_current_nondefaults(cursor):
     ('role1', 'missing_object_kind1', 'access1', set()),
     ('missing_role1', 'object_kind1', 'access', set()),
 ])
-def test_get_role_current_nondefaults(rolename, object_kind, access, expected):
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=True)
+def test_get_role_current_nondefaults(cursor, rolename, object_kind, access, expected):
+    dbcontext = context.DatabaseContext(cursor, verbose=True)
     dbcontext._cache['get_all_current_nondefaults'] = lambda: {
         'role1': {
             'object_kind1': {
@@ -208,8 +208,8 @@ def test_get_role_current_nondefaults(rolename, object_kind, access, expected):
         common.ObjectName(SCHEMAS[0], TABLES[1])
     ])),
 ])
-def test_get_role_objects_with_access(access, expected):
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=True)
+def test_get_role_objects_with_access(cursor, access, expected):
+    dbcontext = context.DatabaseContext(cursor, verbose=True)
     dbcontext._cache['get_all_current_nondefaults'] = lambda: {
         ROLES[0]: {
             'tables': {
@@ -342,9 +342,9 @@ def test_get_all_role_attributes(cursor):
 
 
 
-def test_get_role_attributes():
+def test_get_role_attributes(cursor):
     expected = {'foo': 'bar'}
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=True)
+    dbcontext = context.DatabaseContext(cursor, verbose=True)
     dbcontext._cache['get_all_role_attributes'] = lambda: {ROLES[0]: expected}
     actual = dbcontext.get_role_attributes(ROLES[0])
     assert actual == expected
@@ -352,8 +352,8 @@ def test_get_role_attributes():
 
 
 
-def test_get_role_attributes_role_does_not_exist():
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=True)
+def test_get_role_attributes_role_does_not_exist(cursor):
+    dbcontext = context.DatabaseContext(cursor, verbose=True)
     dbcontext._cache['get_all_role_attributes'] = lambda: {}
     actual = dbcontext.get_role_attributes(ROLES[0])
     assert actual == dict()
@@ -366,8 +366,8 @@ def test_get_role_attributes_role_does_not_exist():
     ({ROLES[0]: {'rolsuper': True}}, True),
     ({}, False),
 ])
-def test_is_superuser(all_role_attributes, expected):
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=True)
+def test_is_superuser(cursor, all_role_attributes, expected):
+    dbcontext = context.DatabaseContext(cursor, verbose=True)
     dbcontext._cache['get_all_role_attributes'] = lambda: all_role_attributes
     actual = dbcontext.is_superuser(ROLES[0])
     assert actual == expected
@@ -441,10 +441,10 @@ def test_get_all_memberships(cursor):
 
 
 
-def test_get_schema_owner():
+def test_get_schema_owner(cursor):
     schema = common.ObjectName('foo')
     expected_owner = 'bar'
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=True)
+    dbcontext = context.DatabaseContext(cursor, verbose=True)
     dbcontext._cache['get_all_schemas_and_owners'] = lambda: {schema: expected_owner}
     actual = dbcontext.get_schema_owner(schema)
     assert actual == expected_owner
@@ -491,10 +491,10 @@ def test_get_all_nonschema_objects_and_owners(cursor):
     assert actual_again == actual
 
 
-def test_get_schema_objects():
+def test_get_schema_objects(cursor):
     schema = common.ObjectName('foo')
     expected = 'bar'
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=False)
+    dbcontext = context.DatabaseContext(cursor, verbose=False)
     dbcontext._cache['get_all_nonschema_objects_and_owners'] = lambda: {
         common.ObjectName('foo'): expected
     }
@@ -502,8 +502,8 @@ def test_get_schema_objects():
     assert actual == expected
 
 
-def test_get_schema_objects_no_entry():
-    dbcontext = context.DatabaseContext(cursor=DUMMY, verbose=False)
+def test_get_schema_objects_no_entry(cursor):
+    dbcontext = context.DatabaseContext(cursor, verbose=False)
     dbcontext._cache['get_all_nonschema_objects_and_owners'] = lambda: {
         common.ObjectName('foo'): 'bar',
     }
@@ -531,6 +531,7 @@ def test_get_version_info(cursor):
     assert isinstance(actual, context.VersionInfo)
     assert not actual.is_redshift
     assert not actual.redshift_version
+    assert not actual.is_google_cloud
     # We do not check the Postgres version since we test against multiple Postgres versions
 
     # Make sure that this data is cached for future use

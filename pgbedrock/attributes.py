@@ -128,6 +128,8 @@ class AttributeAnalyzer(object):
         self.current_attributes = dbcontext.get_role_attributes(rolename)
         self.current_configs = dbcontext.get_role_configs(rolename)
 
+        self.is_google_cloud = dbcontext.get_version_info().is_google_cloud
+
         # We keep track of password-related SQL separately as we don't want running this to
         # go into the main SQL stream since that could leak password
         self.password_sql_to_run = []
@@ -271,9 +273,14 @@ class AttributeAnalyzer(object):
         """ Verify that the role's attributes match the spec's, updating as necessary """
         for attribute, desired_value in attributes.items():
             current_value = self.get_attribute_value(attribute)
-            if attribute == 'rolpassword' and not self.is_same_password(desired_value):
-                logger.debug('Altering password for role "{}"'.format(self.rolename))
-                self.set_password(desired_value)
+            if attribute == 'rolpassword':
+                if self.is_google_cloud:
+                    logger.debug('Skipping password change on Google Cloud SQL')
+                    continue
+
+                if not self.is_same_password(desired_value):
+                    logger.debug('Altering password for role "{}"'.format(self.rolename))
+                    self.set_password(desired_value)
 
             if attribute == 'rolvaliduntil' \
                and is_valid_forever(desired_value) \

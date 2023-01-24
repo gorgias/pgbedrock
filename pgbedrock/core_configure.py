@@ -6,6 +6,7 @@ import psycopg2.extras
 
 from pgbedrock import LOG_FORMAT
 from pgbedrock import common
+from pgbedrock import context
 from pgbedrock.attributes import analyze_attributes
 from pgbedrock.memberships import analyze_memberships
 from pgbedrock.ownerships import analyze_ownerships
@@ -116,6 +117,11 @@ def configure(spec_path, host, port, user, password, dbname, prompt, attributes,
 
     db_connection = common.get_db_connection(host, port, dbname, user, password)
     cursor = db_connection.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    dbcontext = context.DatabaseContext(cursor, verbose)
+
+    if dbcontext.get_version_info().is_google_cloud:
+        click.secho('Running on Google Cloud SQL, password changes will be skipped.', fg='yellow')
 
     spec = load_spec(spec_path, cursor, verbose, attributes, memberships, ownerships, privileges)
 
