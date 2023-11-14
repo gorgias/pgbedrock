@@ -7,7 +7,7 @@ pgbedrock was created with several goals in mind:
      pgbedrock simplifies object access down to read vs. write.  As a result, an administrator
      doesn't need to know that within Postgres 'read' access is really ``SELECT`` for tables but
      ``USAGE`` for schemas, or that write access for schemas means ``CREATE`` but for tables it is a
-     combination of ``INSERT``, ``UPDATE``, ``DELETE``, ``TRUNCATE``, ``REFERENCES``, and
+     combination of ``INSERT``, ``UPDATE``, ``DELETE``, ``REFERENCES``, and
      ``TRIGGER``.
 
 #. **Co-locate all config.**

@@ -226,7 +226,7 @@ Q_GET_VERSIONS = """
 PRIVILEGE_MAP = {
     'tables':
         {'read':  ('SELECT', ),
-         'write': ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER')
+         'write': ('INSERT', 'UPDATE', 'DELETE', 'REFERENCES', 'TRIGGER')
          },
     'sequences':
         {'read':  ('SELECT', ),
