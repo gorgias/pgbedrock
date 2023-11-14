@@ -7,6 +7,13 @@ and this project tries to adhere to [Semantic Versioning](http://semver.org/spec
 ## [Unreleased]
 _this space intentionally left blank_
 
+
+## [0.7.0] - 2023-11-14
+
+### In Code
+
+- Don't give the TRUNCATE permission as part as the `write` role (@jordanp)
+
 ## [0.6.0] - 2023-01-23
 
 ### In Code
