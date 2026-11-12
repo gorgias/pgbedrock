@@ -27,8 +27,9 @@ def entrypoint():
 @click.option('--privileges/--no-privileges', default=True, help='whether to configure privileges (default: --privileges)')
 @click.option('--live/--check', default=False, help='whether to actually make changes ("live") or only show what would be changed ("check") (default: --check)')
 @click.option('--verbose/--no-verbose', default=False, help='whether to show debug-level logging messages while running (default: --no-verbose)')
+@click.option('--keep-unspecified-passwords/--remove-unspecified-passwords', default=False, help='whether a role whose spec has no PASSWORD keeps its current password instead of having it removed (default: --remove-unspecified-passwords)')
 def configure(spec, host, port, user, password, dbname, prompt, attributes, memberships, ownerships,
-              privileges, live, verbose):
+              privileges, live, verbose, keep_unspecified_passwords):
     """
     Configure the role attributes, memberships, object ownerships, and/or privileges of a
     database cluster to match a desired spec.
@@ -42,7 +43,8 @@ def configure(spec, host, port, user, password, dbname, prompt, attributes, memb
     issued by pgbedrock.
     """
     core_configure.configure(spec, host, port, user, password, dbname, prompt, attributes,
-                             memberships, ownerships, privileges, live, verbose)
+                             memberships, ownerships, privileges, live, verbose,
+                             keep_unspecified_passwords)
 
 
 @entrypoint.command(short_help='Generate a YAML spec for a database')

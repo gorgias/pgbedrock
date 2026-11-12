@@ -60,7 +60,7 @@ PG_COLUMN_NAME = {
 COLUMN_NAME_TO_KEYWORD = {v: k for k, v in PG_COLUMN_NAME.items()}
 
 
-def analyze_attributes(spec, cursor, verbose):
+def analyze_attributes(spec, cursor, verbose, keep_unspecified_passwords=False):
     logger.debug('Starting analyze_attributes()')
     dbcontext = DatabaseContext(cursor, verbose)
 
@@ -83,7 +83,8 @@ def analyze_attributes(spec, cursor, verbose):
 
             spec_configs = spec_settings.get('configs', {})
 
-            roleconf = AttributeAnalyzer(rolename, spec_attributes, spec_configs, dbcontext)
+            roleconf = AttributeAnalyzer(rolename, spec_attributes, spec_configs, dbcontext,
+                                         keep_unspecified_passwords=keep_unspecified_passwords)
             roleconf.analyze()
             all_sql_to_run += roleconf.sql_to_run
             password_all_sql_to_run += roleconf.password_sql_to_run
@@ -118,12 +119,15 @@ class AttributeAnalyzer(object):
     make it match the provided spec attributes. Note that spec_attributes is a list whereas
     current_attributes is a dict. """
 
-    def __init__(self, rolename, spec_attributes, spec_configs, dbcontext):
+    def __init__(self, rolename, spec_attributes, spec_configs, dbcontext, keep_unspecified_passwords=False):
         self.sql_to_run = []
         self.rolename = common.check_name(rolename)
         logger.debug('self.rolename set to {}'.format(self.rolename))
         self.spec_attributes = spec_attributes
         self.spec_configs = spec_configs
+        # When True, a role whose spec has no PASSWORD keeps its current password instead of
+        # having it removed, so passwords can be managed outside the spec.
+        self.keep_unspecified_passwords = keep_unspecified_passwords
 
         self.current_attributes = dbcontext.get_role_attributes(rolename)
         self.current_configs = dbcontext.get_role_configs(rolename)
@@ -155,6 +159,8 @@ class AttributeAnalyzer(object):
         attributes = copy.deepcopy(DEFAULT_ATTRIBUTES)
         spec_attributes = self.converted_attributes()
         attributes.update(spec_attributes)
+        if self.keep_unspecified_passwords and 'rolpassword' not in spec_attributes:
+            del attributes['rolpassword']
         return attributes
 
     def converted_attributes(self):

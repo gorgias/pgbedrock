@@ -66,11 +66,9 @@ def drop_users_and_objects(cursor):
     cursor.execute("""
         SELECT rolname
         FROM pg_authid
-        WHERE rolname NOT IN (
-            'test_user', 'postgres', 'pg_signal_backend',
-            -- Roles introduced in Postgres 10:
-            'pg_monitor', 'pg_read_all_settings', 'pg_read_all_stats', 'pg_stat_scan_tables'
-        );
+        WHERE rolname NOT IN ('test_user', 'postgres')
+            -- Built-in roles (pg_monitor, pg_database_owner, ...) can't be dropped
+            AND rolname NOT LIKE 'pg\\_%';
         """)
     users = [u[0] for u in cursor.fetchall()]
     for user in users:
@@ -112,24 +110,22 @@ def base_spec(cursor):
             is_superuser: yes
         """)
 
-    # Postgres 10 introduces several new roles that we have to account for
-    cursor.execute("SELECT substring(version from 'PostgreSQL ([0-9.]*) ') FROM version()")
-    pg_version = cursor.fetchone()[0]
-    if pg_version.startswith('10.'):
-        spec += dedent("""
-
-            pg_read_all_settings:
-
-            pg_stat_scan_tables:
-
-            pg_read_all_stats:
-
-            pg_monitor:
-                member_of:
-                    - pg_read_all_settings
-                    - pg_stat_scan_tables
-                    - pg_read_all_stats
-            """)
+    # Each Postgres version adds built-in pg_* roles (10: pg_monitor and others, 14:
+    # pg_database_owner, pg_read_all_data, ...). pgbedrock fails on undocumented roles, so document
+    # whatever the server under test has, with its memberships among them.
+    cursor.execute("""
+        SELECT r.rolname, array_remove(array_agg(m.rolname ORDER BY m.rolname), NULL)
+        FROM pg_roles r
+        LEFT JOIN pg_auth_members am ON am.member = r.oid
+        LEFT JOIN pg_roles m ON m.oid = am.roleid
+        WHERE r.rolname LIKE 'pg\\_%' AND r.rolname != 'pg_signal_backend'
+        GROUP BY r.rolname
+        ORDER BY r.rolname
+        """)
+    for rolname, member_of in cursor.fetchall():
+        spec += "\n{}:\n".format(rolname)
+        if member_of:
+            spec += "    member_of:\n" + "".join("        - {}\n".format(m) for m in member_of)
 
     return spec
 
