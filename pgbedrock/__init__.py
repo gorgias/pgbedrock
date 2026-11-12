@@ -1,2 +1,2 @@
-__version__ = '0.7.0'
+__version__ = '0.7.0.3'
 LOG_FORMAT = '%(levelname)s:%(filename)s:%(funcName)s:%(lineno)s - %(message)s'

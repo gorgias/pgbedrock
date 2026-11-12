@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project tries to adhere to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+_this space intentionally left blank_
+
+
+## [0.7.0.3] - 2026-11-12
+### Security
+- Jinja2 3.1.6 (3 sandbox breakout advisories).
+
 ### Added
 - `configure --keep-unspecified-passwords` (off by default): a role whose spec has no `PASSWORD`
   keeps its current password instead of having it removed, so passwords can be managed outside
@@ -13,6 +20,21 @@ and this project tries to adhere to [Semantic Versioning](http://semver.org/spec
 ### Fixed
 - Test fixtures document and keep the built-in `pg_*` roles of the server under test, so the
   database tests run on Postgres versions newer than 10.
+
+### Changed
+- Python 3.12 (3.7 is end of life): `python:3.12` images, `python_requires>=3.12`, and current
+  dependencies: Cerberus 1.3.5, click 8.1.8, Jinja2 3.1.6, MarkupSafe 3.0.2, psycopg2 2.9.10,
+  PyYAML 6.0.2; pytest 9.0.3, pytest-cov 6.1.1, wheel 0.46.2. The Cython workaround for PyYAML is
+  gone.
+- `distutils.util.strtobool` (removed in Python 3.12) replaced by a local `strtobool`.
+- `psycopg2.tz` (removed in psycopg2 2.9) replaced by `datetime.timezone.utc` in
+  `is_valid_forever`.
+- Cerberus rule `valueschema` renamed to `valuesrules` (the old name is deprecated).
+- Invalid escape sequences (`\_`, `\-`) fixed; the resulting strings are unchanged.
+- Tests run against Postgres 14 with the CloudNativePG image by default (`POSTGRES_IMAGE`,
+  `POSTGRES_PLATFORM`). The test database mirrors CNPG: `postgres` is the bootstrap superuser
+  without a password, `test_user` a separate superuser. Expectations that depended on Postgres
+  10 (built-in roles and memberships, md5 password hashes) now come from the server.
 
 
 ## [0.7.0] - 2023-11-14

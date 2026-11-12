@@ -66,7 +66,7 @@ SPEC_SCHEMA_YAML = """
             - schemas
             - tables
             - sequences
-        valueschema:
+        valuesrules:
             type: list
             schema:
                 type: string
@@ -76,13 +76,13 @@ SPEC_SCHEMA_YAML = """
             - schemas
             - sequences
             - tables
-        valueschema:
+        valuesrules:
             type: dict
             allowed:
                 - read
                 - write
                 - except
-            valueschema:
+            valuesrules:
                 type: list
                 schema:
                     type: string

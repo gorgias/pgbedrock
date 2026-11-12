@@ -1,8 +1,9 @@
 Notable Functionality And Caveats
 =================================
 
-* Only Postgres 9.5, 9.6, and 10 are currently supported
-    Support for older Postgres versions is unlikely to be prioritized.
+* Only Postgres 14 is currently tested
+    The test suite runs against the CloudNativePG Postgres 14 image. Older versions are no
+    longer tested.
 
 * pgbedrock will not delete or alter any objects
     pgbedrock is explicitly written to not do anything destructive toward the objects in the

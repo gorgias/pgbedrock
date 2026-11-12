@@ -2,7 +2,6 @@ import copy
 import datetime as dt
 import textwrap
 
-import psycopg2
 import pytest
 
 from conftest import run_setup_sql
@@ -21,7 +20,7 @@ VALID_FOREVER_VALUES = (
     None,
     'infinity',
     dt.datetime.max,
-    dt.datetime.max.replace(tzinfo=psycopg2.tz.FixedOffsetTimezone(offset=0, name=None)))
+    dt.datetime.max.replace(tzinfo=dt.timezone.utc))
 
 
 @run_setup_sql([
