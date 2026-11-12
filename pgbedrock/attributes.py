@@ -8,7 +8,6 @@ import re
 import math
 
 import click
-import psycopg2
 
 from pgbedrock import common
 from pgbedrock.context import DatabaseContext

@@ -2,7 +2,6 @@ import copy
 import datetime as dt
 import textwrap
 
-import psycopg2
 import pytest
 
 from conftest import run_setup_sql

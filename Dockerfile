@@ -1,3 +1,5 @@
+# Keep the full python image, not -slim: psycopg2 is built from source (psycopg's recommended
+# setup for production) and needs the compiler and libpq headers the full image ships.
 FROM python:3.12
 
 VOLUME /opt
