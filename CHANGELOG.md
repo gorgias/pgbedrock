@@ -5,7 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project tries to adhere to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-_this space intentionally left blank_
+### Added
+- `configure --keep-unspecified-passwords` (off by default): a role whose spec has no `PASSWORD`
+  keeps its current password instead of having it removed, so passwords can be managed outside
+  the spec.
+
+### Fixed
+- Test fixtures document and keep the built-in `pg_*` roles of the server under test, so the
+  database tests run on Postgres versions newer than 10.
 
 
 ## [0.7.0] - 2023-11-14

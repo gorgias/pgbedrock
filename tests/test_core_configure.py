@@ -172,6 +172,46 @@ def test_no_password_attribute_makes_password_none(cursor, spec_with_new_user, d
     assert cursor.fetchone()[0] is True
 
 
+@pytest.mark.parametrize('keep_unspecified_passwords', [False, True])
+@run_setup_sql([
+    attr.Q_CREATE_ROLE.format(NEW_USER),
+    attr.Q_ALTER_PASSWORD.format(NEW_USER, 'some_password'),
+])
+@pytest.mark.usefixtures('drop_users_and_objects')
+def test_no_password_attribute_with_keep_unspecified_passwords(cursor, spec_with_new_user, db_config,
+                                                               keep_unspecified_passwords):
+    """ A role whose spec has no PASSWORD loses its password by default, and keeps it with
+    keep_unspecified_passwords. Only attributes and memberships run: passwords are handled there,
+    and it avoids the system catalog ownerships and privileges of base_spec. """
+    cursor.connection.commit()
+
+    cursor.execute("SELECT rolpassword FROM pg_authid WHERE rolname = '{}'".format(NEW_USER))
+    password_before = cursor.fetchone()[0]
+    assert password_before is not None
+
+    params = copy.deepcopy(db_config)
+    params.update(
+        dict(spec_path=spec_with_new_user,
+             prompt=False,
+             attributes=True,
+             memberships=True,
+             ownerships=False,
+             privileges=False,
+             live=True,
+             verbose=False,
+             keep_unspecified_passwords=keep_unspecified_passwords,
+             )
+    )
+    core_configure.configure(**params)
+
+    cursor.execute("SELECT rolpassword FROM pg_authid WHERE rolname = '{}'".format(NEW_USER))
+    password_after = cursor.fetchone()[0]
+    if keep_unspecified_passwords:
+        assert password_after == password_before
+    else:
+        assert password_after is None
+
+
 def test_configure_schema_role_has_dash(tmpdir, capsys, db_config, cursor, base_spec):
     """
     We add a new user ('role-with-dash') through pgbedrock and make sure that that user can create

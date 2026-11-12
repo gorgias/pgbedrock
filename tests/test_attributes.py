@@ -503,3 +503,35 @@ def test_set_all_configs(mockdbcontext):
 )
 def test_parse_config_value(value, expected):
     assert attr.AttributeAnalyzer.parse_config_value(value) == expected
+
+
+def _role_with_password(mockdbcontext):
+    role_attributes = copy.deepcopy(attr.DEFAULT_ATTRIBUTES)
+    role_attributes.update(dict(rolpassword=attr.create_md5_hash(ROLE1, 'supersecret')))
+    mockdbcontext.get_role_attributes = lambda x: role_attributes
+
+
+def test_unspecified_password_is_removed_by_default(mockdbcontext):
+    _role_with_password(mockdbcontext)
+    roleconf = attr.AttributeAnalyzer(ROLE1, spec_attributes=[], spec_configs={}, dbcontext=mockdbcontext)
+    roleconf.set_all_attributes(roleconf.coalesce_attributes())
+    assert roleconf.password_sql_to_run == [attr.Q_REMOVE_PASSWORD.format(ROLE1)]
+
+
+def test_unspecified_password_is_kept_with_keep_unspecified_passwords(mockdbcontext):
+    _role_with_password(mockdbcontext)
+    roleconf = attr.AttributeAnalyzer(ROLE1, spec_attributes=[], spec_configs={}, dbcontext=mockdbcontext,
+                                      keep_unspecified_passwords=True)
+    attributes = roleconf.coalesce_attributes()
+    assert 'rolpassword' not in attributes
+    roleconf.set_all_attributes(attributes)
+    assert roleconf.password_sql_to_run == []
+    assert roleconf.sql_to_run == []
+
+
+def test_specified_password_is_still_set_with_keep_unspecified_passwords(mockdbcontext):
+    _role_with_password(mockdbcontext)
+    roleconf = attr.AttributeAnalyzer(ROLE1, spec_attributes=["PASSWORD 'newsecret'"], spec_configs={},
+                                      dbcontext=mockdbcontext, keep_unspecified_passwords=True)
+    roleconf.set_all_attributes(roleconf.coalesce_attributes())
+    assert roleconf.password_sql_to_run == [attr.Q_ALTER_PASSWORD.format(ROLE1, 'newsecret')]
