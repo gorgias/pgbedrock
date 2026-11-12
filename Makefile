@@ -1,8 +1,12 @@
 .PHONY: attach build build_tester clean coverage create_network docs psql release_pypi release_pypitest release_quay remove_network start_postgres stop_postgres test test_one_pg_version pytest view_docs wait_for_postgres
 
-SUPPORTED_PG_VERSIONS ?= 9.5.13 9.6.4 10.4
+SUPPORTED_PG_VERSIONS ?= 14.13
 # The default Postgres that will be used in individual targets
-POSTGRES_VERSION ?= 10.4
+POSTGRES_VERSION ?= 14.13
+# The image our CNPG clusters run; override with e.g. our postgresql-failover-slots build
+POSTGRES_IMAGE ?= ghcr.io/cloudnative-pg/postgresql:$(POSTGRES_VERSION)
+# Set to linux/amd64 for amd64-only images (e.g. postgresql-failover-slots) on arm64 machines
+POSTGRES_PLATFORM ?=
 
 COMPOSED_NETWORK = pgbedrock_network
 POSTGRES_HOST = pgbedrock_postgres
@@ -78,12 +82,14 @@ remove_network: stop_postgres
 start_postgres: create_network
 	@echo "Starting postgres $(POSTGRES_VERSION)"
 	@docker run --rm -d --name $(POSTGRES_HOST) \
-        -e POSTGRES_USER=$(POSTGRES_USER) \
+        -e POSTGRES_USER=postgres \
         -e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
         -e POSTGRES_DB=$(POSTGRES_DB) \
+        -v $(shell pwd)/tests/init_test_user.sql:/docker-entrypoint-initdb.d/init_test_user.sql \
 		-p 54321:5432 \
         --net=$(COMPOSED_NETWORK) \
-        postgres:$(POSTGRES_VERSION)
+        $(if $(POSTGRES_PLATFORM),--platform $(POSTGRES_PLATFORM)) \
+        $(POSTGRES_IMAGE)
 
 stop_postgres:
 	@echo "Stopping postgres (if it is running)"
@@ -110,7 +116,7 @@ pytest:
 
 wait_for_postgres:
 	@echo 'Sleeping while postgres starts up';
-	@docker run --rm -it --name wait_for_postgres \
+	@docker run --rm --name wait_for_postgres \
         -e POSTGRES_HOST=$(POSTGRES_HOST) \
         -e POSTGRES_USER=$(POSTGRES_USER) \
         -e POSTGRES_PASSWORD=$(POSTGRES_PASSWORD) \
@@ -119,7 +125,8 @@ wait_for_postgres:
 		-v $(shell pwd)/tests/wait_for_postgres.sh:/wait_for_postgres.sh \
         --net=$(COMPOSED_NETWORK) \
 		--entrypoint="/wait_for_postgres.sh" \
-        postgres:$(POSTGRES_VERSION)
+        $(if $(POSTGRES_PLATFORM),--platform $(POSTGRES_PLATFORM)) \
+        $(POSTGRES_IMAGE)
 
 view_docs: docs
 	open docs/_build/html/index.html

@@ -325,12 +325,9 @@ def test_get_all_role_attributes(cursor):
     dbcontext = context.DatabaseContext(cursor, verbose=True)
 
     expected = set(['test_user', 'postgres', ROLES[0], ROLES[1]])
-    pg_version = dbcontext.get_version_info().postgres_version
-    # Postgres 10 introduces several new roles that we have to account for
-    if pg_version.startswith('10.'):
-        expected.update(set([
-            'pg_read_all_settings', 'pg_stat_scan_tables', 'pg_read_all_stats', 'pg_monitor']
-        ))
+    # Built-in pg_* roles depend on the Postgres version: take them from the server
+    cursor.execute("SELECT rolname FROM pg_roles WHERE rolname LIKE 'pg\\_%' AND rolname != 'pg_signal_backend'")
+    expected.update(row[0] for row in cursor.fetchall())
 
     actual = dbcontext.get_all_role_attributes()
     assert set(actual.keys()) == expected
@@ -422,14 +419,15 @@ def test_get_all_memberships(cursor):
     dbcontext = context.DatabaseContext(cursor, verbose=True)
 
     expected = set([('role1', 'role0'), ('role2', 'role1')])
-    pg_version = dbcontext.get_version_info().postgres_version
-    # Postgres 10 introduces several new roles and memberships that we have to account for
-    if pg_version.startswith('10.'):
-        expected.update(set([
-            ('pg_monitor', 'pg_stat_scan_tables'),
-            ('pg_monitor', 'pg_read_all_stats'),
-            ('pg_monitor', 'pg_read_all_settings'),
-        ]))
+    # Built-in memberships (e.g. pg_monitor) depend on the Postgres version: take them from the server
+    cursor.execute("""
+        SELECT m.rolname, r.rolname
+        FROM pg_auth_members am
+        JOIN pg_roles m ON m.oid = am.member
+        JOIN pg_roles r ON r.oid = am.roleid
+        WHERE m.rolname LIKE 'pg\\_%'
+        """)
+    expected.update(tuple(row) for row in cursor.fetchall())
 
     actual = dbcontext.get_all_memberships()
     assert isinstance(actual, list)

@@ -29,8 +29,10 @@ Testing Functionality
 ---------------------
 Various testing functionality exists:
 
-    * ``make test`` - Run tests for both Python 2 and 3 (via docker containers) against all
-      supported Postgres versions
+    * ``make test`` - Run tests on Python 3.12 (via docker containers) against all supported
+      Postgres versions, using the CloudNativePG image by default. Override ``POSTGRES_IMAGE``
+      to test another image, and set ``POSTGRES_PLATFORM=linux/amd64`` for amd64-only images,
+      e.g. ``make test_one_pg_version POSTGRES_IMAGE=<image> POSTGRES_PLATFORM=linux/amd64``
     * ``pytest`` - Run tests for whichever Python version is in your virtualenv. This requires
       running ``make start_postgres`` first to start up a local dockerized Postgres. Also, if
       you've previously run the test suite with docker that you will need to run ``make clean``

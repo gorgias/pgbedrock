@@ -109,7 +109,7 @@ def is_valid_forever(val):
     if val is None or val == 'infinity':
         return True
     elif isinstance(val, dt.datetime) and val.tzinfo is not None:
-        return val == dt.datetime.max.replace(tzinfo=psycopg2.tz.FixedOffsetTimezone(offset=0, name=None))
+        return val == dt.datetime.max.replace(tzinfo=dt.timezone.utc)
     else:
         return val == dt.datetime.max
 
@@ -361,7 +361,7 @@ class AttributeAnalyzer(object):
 
         # Valid memory units are B (bytes), kB (kilobytes), MB (megabytes), GB (gigabytes), and TB (terabytes).
         # The multiplier for memory units is 1024, not 1000.
-        m = re.search("(?P<quantity>[\-\+]?[0-9]+(\.[0-9]+)?)\s*(?P<unit>B|kB|MB|GB|TB)", value)
+        m = re.search(r"(?P<quantity>[\-\+]?[0-9]+(\.[0-9]+)?)\s*(?P<unit>B|kB|MB|GB|TB)", value)
         if m:
             quantity = float(m.group("quantity"))
             unit = m.group("unit")
@@ -378,7 +378,7 @@ class AttributeAnalyzer(object):
                 return math.floor(quantity * 1024) * 1024 ** 2
 
         # Valid time units are us (microseconds), ms (milliseconds), s (seconds), min (minutes), h (hours), and d (days).
-        m = re.search("(?P<quantity>[\-\+]?[0-9]+(\.[0-9]+)?)\s*(?P<unit>us|ms|s|min|h|d)", value)
+        m = re.search(r"(?P<quantity>[\-\+]?[0-9]+(\.[0-9]+)?)\s*(?P<unit>us|ms|s|min|h|d)", value)
         if m:
             quantity = float(m.group("quantity"))
             unit = m.group("unit")

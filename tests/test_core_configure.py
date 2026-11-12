@@ -1,3 +1,4 @@
+import base64
 import copy
 from textwrap import dedent
 
@@ -120,9 +121,14 @@ def test_configure_live_does_not_leak_passwords(tmpdir, capsys, cursor, db_confi
     core_configure.configure(**params)
 
     # Verify that the password was changed
-    new_md5_hash = attr.create_md5_hash(NEW_USER, new_password)
+    # Postgres stores SCRAM-SHA-256 (the default since 14) or md5, depending on password_encryption
     cursor.execute("SELECT rolpassword FROM pg_authid WHERE rolname = '{}';".format(NEW_USER))
-    assert cursor.fetchone()[0] == new_md5_hash
+    stored = cursor.fetchone()[0]
+    if stored.startswith('SCRAM-SHA-256$'):
+        iterations, salt = stored.split('$')[1].split(':')
+        assert stored == attr.create_scram_hash(new_password, base64.b64decode(salt), int(iterations))
+    else:
+        assert stored == attr.create_md5_hash(NEW_USER, new_password)
 
     # Verify that the password isn't exposed in our output
     out, err = capsys.readouterr()

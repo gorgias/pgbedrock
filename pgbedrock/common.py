@@ -1,9 +1,3 @@
-try:
-    # Python 2
-    from distutils import strtobool
-except:
-    # Python 3
-    from distutils.util import strtobool
 import logging
 import sys
 import traceback
@@ -44,6 +38,16 @@ def get_db_connection(host, port, dbname, user, password):
 
 def item_show_func(x):
     return x[0] if x else ''
+
+
+def strtobool(value):
+    """ Same contract as the removed distutils.util.strtobool (gone in Python 3.12). """
+    value = value.lower()
+    if value in ('y', 'yes', 't', 'true', 'on', '1'):
+        return 1
+    if value in ('n', 'no', 'f', 'false', 'off', '0'):
+        return 0
+    raise ValueError('invalid truth value {!r}'.format(value))
 
 
 def parse_bool(value):
